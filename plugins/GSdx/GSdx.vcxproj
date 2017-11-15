@@ -1,0 +1,332 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug AVX2|Win32">
+      <Configuration>Debug AVX2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug AVX2|x64">
+      <Configuration>Debug AVX2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug SSE4|Win32">
+      <Configuration>Debug SSE4</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug SSE4|x64">
+      <Configuration>Debug SSE4</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release AVX2|Win32">
+      <Configuration>Release AVX2</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release AVX2|x64">
+      <Configuration>Release AVX2</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SSE4|Win32">
+      <Configuration>Release SSE4</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release SSE4|x64">
+      <Configuration>Release SSE4</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{18E42F6F-3A62-41EE-B42F-79366C4F1E95}</ProjectGuid>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <PlatformToolset>$(DefaultPlatformToolset)</PlatformToolset>
+    <CharacterSet>MultiByte</CharacterSet>
+    <WholeProgramOptimization Condition="$(Configuration.Contains(Release))">true</WholeProgramOptimization>
+    <UseDebugLibraries Condition="$(Configuration.Contains(Debug))">true</UseDebugLibraries>
+    <UseDebugLibraries Condition="!$(Configuration.Contains(Debug))">false</UseDebugLibraries>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings" />
+  <ImportGroup Label="PropertySheets">
+    <Import Project="vsprops\ProjectRootDir.props" />
+    <Import Condition="'$(Configuration)'=='Release' Or '$(Configuration)'=='Debug'" Project="vsprops\sse2.props" />
+    <Import Condition="'$(Configuration)'=='Release SSE4' Or '$(Configuration)'=='Debug SSE4'" Project="vsprops\sse4.props" />
+    <Import Condition="'$(Configuration)'=='Release AVX2' Or '$(Configuration)'=='Debug AVX2'" Project="vsprops\avx2.props" />
+    <Import Project="vsprops\common.props" />
+    <Import Condition="$(Configuration.Contains(Debug))" Project="vsprops\debug.props" />
+    <Import Condition="$(Configuration.Contains(Release))" Project="vsprops\release.props" />
+    <Import Condition="'$(Platform)'=='Win32'" Project="vsprops\x86.props" />
+    <Import Condition="'$(Platform)'=='x64'" Project="vsprops\x64.props" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <CodeAnalysisRuleSet>AllRules.ruleset</CodeAnalysisRuleSet>
+  </PropertyGroup>
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+    </ClCompile>
+    <Link>
+      <ModuleDefinitionFile>.\GSdx.def</ModuleDefinitionFile>
+      <TargetMachine Condition="'$(Platform)'=='Win32'">MachineX86</TargetMachine>
+      <TargetMachine Condition="'$(Platform)'=='x64'">MachineX64</TargetMachine>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="GLLoader.cpp" />
+    <ClCompile Include="GLState.cpp" />
+    <ClCompile Include="GS.cpp" />
+    <ClCompile Include="GSAlignedClass.cpp" />
+    <ClCompile Include="GSBlock.cpp" />
+    <ClCompile Include="GSCapture.cpp" />
+    <ClCompile Include="GSCaptureDlg.cpp" />
+    <ClCompile Include="GSClut.cpp" />
+    <ClCompile Include="GSCodeBuffer.cpp" />
+    <ClCompile Include="GSCrc.cpp" />
+    <ClCompile Include="GSDevice.cpp" />
+    <ClCompile Include="GSDevice11.cpp" />
+    <ClCompile Include="GSDevice9.cpp" />
+    <ClCompile Include="GSDeviceDX.cpp" />
+    <ClCompile Include="GSDeviceNull.cpp" />
+    <ClCompile Include="GSDeviceOGL.cpp" />
+    <ClCompile Include="GSDialog.cpp" />
+    <ClCompile Include="GSDirtyRect.cpp" />
+    <ClCompile Include="GSDrawingContext.cpp" />
+    <ClCompile Include="GSDrawScanline.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x64.avx.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x64.avx2.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x64.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x86.avx.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x86.avx2.cpp" />
+    <ClCompile Include="GSDrawScanlineCodeGenerator.x86.cpp" />
+    <ClCompile Include="GSDump.cpp" />
+    <ClCompile Include="GSdx.cpp" />
+    <ClCompile Include="GSFunctionMap.cpp" />
+    <ClCompile Include="GSHwHack.cpp" />
+    <ClCompile Include="GSLocalMemory.cpp" />
+    <ClCompile Include="GSLzma.cpp" />
+    <ClCompile Include="GSPerfMon.cpp" />
+    <ClCompile Include="GSOsdManager.cpp" />
+    <ClCompile Include="GSPng.cpp" />
+    <ClCompile Include="GSRasterizer.cpp" />
+    <ClCompile Include="GSRenderer.cpp" />
+    <ClCompile Include="GSRendererCL.cpp" />
+    <ClCompile Include="GSRendererCS.cpp" />
+    <ClCompile Include="GSRendererDX.cpp" />
+    <ClCompile Include="GSRendererDX11.cpp" />
+    <ClCompile Include="GSRendererDX9.cpp" />
+    <ClCompile Include="GSRendererHW.cpp" />
+    <ClCompile Include="GSRendererNull.cpp" />
+    <ClCompile Include="GSRendererOGL.cpp" />
+    <ClCompile Include="GSRendererSW.cpp" />
+    <ClCompile Include="GSSetting.cpp" />
+    <ClCompile Include="GSSettingsDlg.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x64.avx.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x64.avx2.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x64.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x86.avx.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x86.avx2.cpp" />
+    <ClCompile Include="GSSetupPrimCodeGenerator.x86.cpp" />
+    <ClCompile Include="GSShaderOGL.cpp" />
+    <ClCompile Include="GSState.cpp" />
+    <ClCompile Include="GSTables.cpp" />
+    <ClCompile Include="GSTexture.cpp" />
+    <ClCompile Include="GSTexture11.cpp" />
+    <ClCompile Include="GSTexture9.cpp" />
+    <ClCompile Include="GSTextureOGL.cpp" />
+    <ClCompile Include="GSTextureCache.cpp" />
+    <ClCompile Include="GSTextureCache11.cpp" />
+    <ClCompile Include="GSTextureCache9.cpp" />
+    <ClCompile Include="GSTextureCacheOGL.cpp" />
+    <ClCompile Include="GSTextureCacheSW.cpp" />
+    <ClCompile Include="GSTextureFX11.cpp" />
+    <ClCompile Include="GSTextureFX9.cpp" />
+    <ClCompile Include="GSTextureNull.cpp" />
+    <ClCompile Include="GSTextureSW.cpp" />
+    <ClCompile Include="GSUtil.cpp" />
+    <ClCompile Include="GSVector.cpp" />
+    <ClCompile Include="GSVertexList.cpp" />
+    <ClCompile Include="GSVertexSW.cpp" />
+    <ClCompile Include="GSVertexTrace.cpp" />
+    <ClCompile Include="GSWnd.cpp" />
+    <ClCompile Include="GSWndDX.cpp" />
+    <ClCompile Include="GSWndWGL.cpp" />
+    <ClCompile Include="PSX\GPU.cpp" />
+    <ClCompile Include="PSX\GPUDrawScanline.cpp" />
+    <ClCompile Include="PSX\GPUDrawScanlineCodeGenerator.cpp" />
+    <ClCompile Include="PSX\GPULocalMemory.cpp" />
+    <ClCompile Include="PSX\GPURenderer.cpp" />
+    <ClCompile Include="PSX\GPURendererSW.cpp" />
+    <ClCompile Include="PSX\GPUSettingsDlg.cpp" />
+    <ClCompile Include="PSX\GPUSetupPrimCodeGenerator.cpp" />
+    <ClCompile Include="PSX\GPUState.cpp" />
+    <ClCompile Include="stdafx.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="boost_spsc_queue.hpp" />
+    <ClInclude Include="config.h" />
+    <ClInclude Include="GLLoader.h" />
+    <ClInclude Include="GLState.h" />
+    <ClInclude Include="GS.h" />
+    <ClInclude Include="GSAlignedClass.h" />
+    <ClInclude Include="GSBlock.h" />
+    <ClInclude Include="GSCapture.h" />
+    <ClInclude Include="GSCaptureDlg.h" />
+    <ClInclude Include="GSClut.h" />
+    <ClInclude Include="GSCodeBuffer.h" />
+    <ClInclude Include="GSCrc.h" />
+    <ClInclude Include="GSDevice.h" />
+    <ClInclude Include="GSDevice11.h" />
+    <ClInclude Include="GSDevice9.h" />
+    <ClInclude Include="GSDeviceDX.h" />
+    <ClInclude Include="GSDeviceNull.h" />
+    <ClInclude Include="GSDeviceOGL.h" />
+    <ClInclude Include="GSDialog.h" />
+    <ClInclude Include="GSDirtyRect.h" />
+    <ClInclude Include="GSDrawingContext.h" />
+    <ClInclude Include="GSDrawingEnvironment.h" />
+    <ClInclude Include="GSDrawScanline.h" />
+    <ClInclude Include="GSDrawScanlineCodeGenerator.h" />
+    <ClInclude Include="GSDump.h" />
+    <ClInclude Include="GSdx.h" />
+    <ClInclude Include="GSFastList.h" />
+    <ClInclude Include="GSFunctionMap.h" />
+    <ClInclude Include="GSLocalMemory.h" />
+    <ClInclude Include="GSLzma.h" />
+    <ClInclude Include="GSPerfMon.h" />
+    <ClInclude Include="GSOsdManager.h" />
+    <ClInclude Include="GSPng.h" />
+    <ClInclude Include="GSRasterizer.h" />
+    <ClInclude Include="GSRenderer.h" />
+    <ClInclude Include="GSRendererCL.h" />
+    <ClInclude Include="GSRendererCS.h" />
+    <ClInclude Include="GSRendererDX.h" />
+    <ClInclude Include="GSRendererDX11.h" />
+    <ClInclude Include="GSRendererDX9.h" />
+    <ClInclude Include="GSRendererHW.h" />
+    <ClInclude Include="GSRendererNull.h" />
+    <ClInclude Include="GSRendererOGL.h" />
+    <ClInclude Include="GSRendererSW.h" />
+    <ClInclude Include="GSScanlineEnvironment.h" />
+    <ClInclude Include="GSSetting.h" />
+    <ClInclude Include="GSSettingsDlg.h" />
+    <ClInclude Include="GSSetupPrimCodeGenerator.h" />
+    <ClInclude Include="GSShaderOGL.h" />
+    <ClInclude Include="GSState.h" />
+    <ClInclude Include="GSTables.h" />
+    <ClInclude Include="GSTexture.h" />
+    <ClInclude Include="GSTexture11.h" />
+    <ClInclude Include="GSTexture9.h" />
+    <ClInclude Include="GSTextureOGL.h" />
+    <ClInclude Include="GSTextureCache.h" />
+    <ClInclude Include="GSTextureCache11.h" />
+    <ClInclude Include="GSTextureCache9.h" />
+    <ClInclude Include="GSTextureCacheOGL.h" />
+    <ClInclude Include="GSTextureCacheSW.h" />
+    <ClInclude Include="GSTextureNull.h" />
+    <ClInclude Include="GSTextureSW.h" />
+    <ClInclude Include="GSThread.h" />
+    <ClInclude Include="GSThread_CXX11.h" />
+    <ClInclude Include="GSUniformBufferOGL.h" />
+    <ClInclude Include="GSUtil.h" />
+    <ClInclude Include="GSVector.h" />
+    <ClInclude Include="GSVector4i.h" />
+    <ClInclude Include="GSVector4.h" />
+    <ClInclude Include="GSVector8i.h" />
+    <ClInclude Include="GSVector8.h" />
+    <ClInclude Include="GSVertex.h" />
+    <ClInclude Include="GSVertexArrayOGL.h" />
+    <ClInclude Include="GSVertexHW.h" />
+    <ClInclude Include="GSVertexList.h" />
+    <ClInclude Include="GSVertexSW.h" />
+    <ClInclude Include="GSVertexTrace.h" />
+    <ClInclude Include="GSWnd.h" />
+    <ClInclude Include="GSWndDX.h" />
+    <ClInclude Include="GSWndWGL.h" />
+    <ClInclude Include="PSX\GPU.h" />
+    <ClInclude Include="PSX\GPUDrawingEnvironment.h" />
+    <ClInclude Include="PSX\GPUDrawScanline.h" />
+    <ClInclude Include="PSX\GPUDrawScanlineCodeGenerator.h" />
+    <ClInclude Include="PSX\GPULocalMemory.h" />
+    <ClInclude Include="PSX\GPURenderer.h" />
+    <ClInclude Include="PSX\GPURendererSW.h" />
+    <ClInclude Include="PSX\GPUScanlineEnvironment.h" />
+    <ClInclude Include="PSX\GPUSettingsDlg.h" />
+    <ClInclude Include="PSX\GPUSetupPrimCodeGenerator.h" />
+    <ClInclude Include="PSX\GPUState.h" />
+    <ClInclude Include="PSX\GPUVertex.h" />
+    <ClInclude Include="stdafx.h" />
+    <ClInclude Include="svnrev.h" />
+    <ClInclude Include="resource.h" />
+    <ClInclude Include="targetver.h" />
+    <ClInclude Include="xbyak\xbyak.h" />
+    <ClInclude Include="xbyak\xbyak_mnemonic.h" />
+    <ClInclude Include="xbyak\xbyak_util.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GSdx.def" />
+    <None Include="res\cs.fx" />
+    <None Include="res\fxaa.fx" />
+    <None Include="res\logo10.bmp" />
+    <None Include="res\logo9.bmp" />
+    <None Include="res\logo_ogl.bmp" />
+    <None Include="res\convert.fx" />
+    <None Include="res\interlace.fx" />
+    <None Include="res\merge.fx" />
+    <None Include="res\shadeboost.fx" />
+    <None Include="res\tfx.cl" />
+    <None Include="res\tfx.fx" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="GSdx.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\logo-null.bmp" />
+    <Image Include="res\logo-ogl.bmp" />
+    <Image Include="res\logo11.bmp" />
+    <Image Include="res\psx-logo-null.bmp" />
+    <Image Include="res\psx-logo11.bmp" />
+    <Image Include="res\psx-logo9.bmp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\3rdparty\freetype\builds\windows\freetype.vcxproj">
+      <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\3rdparty\libpng\projects\vstudio\libpng\libpng.vcxproj">
+      <Project>{d6973076-9317-4ef2-a0b8-b7a18ac0713e}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\3rdparty\opencl\opencl.vcxproj">
+      <Project>{d80d4a75-c385-41bd-ae62-83d2e2b595a7}</Project>
+      <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+    </ProjectReference>
+    <ProjectReference Include="..\..\3rdparty\xz\liblzma.vcxproj">
+      <Project>{12728250-16ec-4dc6-94d7-e21dd88947f8}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\unfree\baseclasses\baseclasses.vcxproj">
+      <Project>{27f17499-a372-4408-8afa-4f9f4584fbd3}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets" />
+</Project>
