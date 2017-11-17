@@ -2,8 +2,6 @@
 #include <exception>
 #include <algorithm>
 
-#include <boost/utility.hpp>
-
 namespace shoryu
 {
 	class archive : boost::noncopyable
