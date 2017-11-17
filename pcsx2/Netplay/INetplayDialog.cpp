@@ -1,4 +1,5 @@
 #include "PrecompiledHeader.h"
+#include <boost/thread/condition_variable.hpp>
 #include <boost/shared_ptr.hpp>
 #include "INetplayDialog.h"
 #include "gui/NetplayDialog.h"

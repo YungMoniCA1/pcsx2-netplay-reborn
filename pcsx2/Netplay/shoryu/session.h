@@ -1,4 +1,5 @@
 #pragma once
+#include <boost/thread/condition_variable.hpp>
 #include "async_transport.h"
 
 namespace shoryu
