@@ -29,9 +29,12 @@ typedef struct {
 	/// Uncompressed Size fields
 	bool all_have_sizes;
 
+	/// Oldest XZ Utils version that will decompress the file
+	uint32_t min_version;
+
 } xz_file_info;
 
-#define XZ_FILE_INFO_INIT { NULL, 0, 0, true }
+#define XZ_FILE_INFO_INIT { NULL, 0, 0, true, 50000002 }
 
 
 /// Information about a .xz Block
@@ -104,8 +107,32 @@ static struct {
 	uint64_t stream_padding;
 	uint64_t memusage_max;
 	uint32_t checks;
+	uint32_t min_version;
 	bool all_have_sizes;
-} totals = { 0, 0, 0, 0, 0, 0, 0, 0, true };
+} totals = { 0, 0, 0, 0, 0, 0, 0, 0, 50000002, true };
+
+
+/// Convert XZ Utils version number to a string.
+static const char *
+xz_ver_to_str(uint32_t ver)
+{
+	static char buf[32];
+
+	unsigned int major = ver / 10000000U;
+	ver -= major * 10000000U;
+
+	unsigned int minor = ver / 10000U;
+	ver -= minor * 10000U;
+
+	unsigned int patch = ver / 10U;
+	ver -= patch * 10U;
+
+	const char *stability = ver == 0 ? "alpha" : ver == 1 ? "beta" : "";
+
+	snprintf(buf, sizeof(buf), "%u.%u.%u%s",
+			major, minor, patch, stability);
+	return buf;
+}
 
 
 /// \brief      Parse the Index(es) from the given .xz file
@@ -116,9 +143,6 @@ static struct {
 ///
 /// \return     On success, false is returned. On error, true is returned.
 ///
-// TODO: This function is pretty big. liblzma should have a function that
-// takes a callback function to parse the Index(es) from a .xz file to make
-// it easy for applications.
 static bool
 parse_indexes(xz_file_info *xfi, file_pair *pair)
 {
@@ -134,224 +158,75 @@ parse_indexes(xz_file_info *xfi, file_pair *pair)
 	}
 
 	io_buf buf;
-	lzma_stream_flags header_flags;
-	lzma_stream_flags footer_flags;
-	lzma_ret ret;
-
-	// lzma_stream for the Index decoder
 	lzma_stream strm = LZMA_STREAM_INIT;
+	lzma_index *idx = NULL;
 
-	// All Indexes decoded so far
-	lzma_index *combined_index = NULL;
+	lzma_ret ret = lzma_file_info_decoder(&strm, &idx,
+			hardware_memlimit_get(MODE_LIST),
+			(uint64_t)(pair->src_st.st_size));
+	if (ret != LZMA_OK) {
+		message_error("%s: %s", pair->src_name, message_strm(ret));
+		return true;
+	}
 
-	// The Index currently being decoded
-	lzma_index *this_index = NULL;
-
-	// Current position in the file. We parse the file backwards so
-	// initialize it to point to the end of the file.
-	off_t pos = pair->src_st.st_size;
-
-	// Each loop iteration decodes one Index.
-	do {
-		// Check that there is enough data left to contain at least
-		// the Stream Header and Stream Footer. This check cannot
-		// fail in the first pass of this loop.
-		if (pos < 2 * LZMA_STREAM_HEADER_SIZE) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(LZMA_DATA_ERROR));
-			goto error;
-		}
-
-		pos -= LZMA_STREAM_HEADER_SIZE;
-		lzma_vli stream_padding = 0;
-
-		// Locate the Stream Footer. There may be Stream Padding which
-		// we must skip when reading backwards.
-		while (true) {
-			if (pos < LZMA_STREAM_HEADER_SIZE) {
-				message_error("%s: %s", pair->src_name,
-						message_strm(
-							LZMA_DATA_ERROR));
-				goto error;
-			}
-
-			if (io_pread(pair, &buf,
-					LZMA_STREAM_HEADER_SIZE, pos))
-				goto error;
-
-			// Stream Padding is always a multiple of four bytes.
-			int i = 2;
-			if (buf.u32[i] != 0)
-				break;
-
-			// To avoid calling io_pread() for every four bytes
-			// of Stream Padding, take advantage that we read
-			// 12 bytes (LZMA_STREAM_HEADER_SIZE) already and
-			// check them too before calling io_pread() again.
-			do {
-				stream_padding += 4;
-				pos -= 4;
-				--i;
-			} while (i >= 0 && buf.u32[i] == 0);
-		}
-
-		// Decode the Stream Footer.
-		ret = lzma_stream_footer_decode(&footer_flags, buf.u8);
-		if (ret != LZMA_OK) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(ret));
-			goto error;
-		}
-
-		// Check that the size of the Index field looks sane.
-		lzma_vli index_size = footer_flags.backward_size;
-		if ((lzma_vli)(pos) < index_size + LZMA_STREAM_HEADER_SIZE) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(LZMA_DATA_ERROR));
-			goto error;
-		}
-
-		// Set pos to the beginning of the Index.
-		pos -= index_size;
-
-		// See how much memory we can use for decoding this Index.
-		uint64_t memlimit = hardware_memlimit_get(MODE_LIST);
-		uint64_t memused = 0;
-		if (combined_index != NULL) {
-			memused = lzma_index_memused(combined_index);
-			if (memused > memlimit)
-				message_bug();
-
-			memlimit -= memused;
-		}
-
-		// Decode the Index.
-		ret = lzma_index_decoder(&strm, &this_index, memlimit);
-		if (ret != LZMA_OK) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(ret));
-			goto error;
-		}
-
-		do {
-			// Don't give the decoder more input than the
-			// Index size.
-			strm.avail_in = my_min(IO_BUFFER_SIZE, index_size);
-			if (io_pread(pair, &buf, strm.avail_in, pos))
-				goto error;
-
-			pos += strm.avail_in;
-			index_size -= strm.avail_in;
-
+	while (true) {
+		if (strm.avail_in == 0) {
 			strm.next_in = buf.u8;
-			ret = lzma_code(&strm, LZMA_RUN);
+			strm.avail_in = io_read(pair, &buf, IO_BUFFER_SIZE);
+			if (strm.avail_in == SIZE_MAX)
+				goto error;
+		}
 
-		} while (ret == LZMA_OK);
+		ret = lzma_code(&strm, LZMA_RUN);
 
-		// If the decoding seems to be successful, check also that
-		// the Index decoder consumed as much input as indicated
-		// by the Backward Size field.
-		if (ret == LZMA_STREAM_END)
-			if (index_size != 0 || strm.avail_in != 0)
-				ret = LZMA_DATA_ERROR;
+		switch (ret) {
+		case LZMA_OK:
+			break;
 
-		if (ret != LZMA_STREAM_END) {
-			// LZMA_BUFFER_ERROR means that the Index decoder
-			// would have liked more input than what the Index
-			// size should be according to Stream Footer.
-			// The message for LZMA_DATA_ERROR makes more
-			// sense in that case.
-			if (ret == LZMA_BUF_ERROR)
-				ret = LZMA_DATA_ERROR;
+		case LZMA_SEEK_NEEDED:
+			// The cast is safe because liblzma won't ask us to
+			// seek past the known size of the input file which
+			// did fit into off_t.
+			assert(strm.seek_pos
+					<= (uint64_t)(pair->src_st.st_size));
+			if (io_seek_src(pair, (off_t)(strm.seek_pos)))
+				goto error;
 
+			// avail_in must be zero so that we will read new
+			// input.
+			strm.avail_in = 0;
+			break;
+
+		case LZMA_STREAM_END: {
+			lzma_end(&strm);
+			xfi->idx = idx;
+
+			// Calculate xfi->stream_padding.
+			lzma_index_iter iter;
+			lzma_index_iter_init(&iter, xfi->idx);
+			while (!lzma_index_iter_next(&iter,
+					LZMA_INDEX_ITER_STREAM))
+				xfi->stream_padding += iter.stream.padding;
+
+			return false;
+		}
+
+		default:
 			message_error("%s: %s", pair->src_name,
 					message_strm(ret));
 
 			// If the error was too low memory usage limit,
 			// show also how much memory would have been needed.
-			if (ret == LZMA_MEMLIMIT_ERROR) {
-				uint64_t needed = lzma_memusage(&strm);
-				if (UINT64_MAX - needed < memused)
-					needed = UINT64_MAX;
-				else
-					needed += memused;
-
-				message_mem_needed(V_ERROR, needed);
-			}
+			if (ret == LZMA_MEMLIMIT_ERROR)
+				message_mem_needed(V_ERROR,
+						lzma_memusage(&strm));
 
 			goto error;
 		}
-
-		// Decode the Stream Header and check that its Stream Flags
-		// match the Stream Footer.
-		pos -= footer_flags.backward_size + LZMA_STREAM_HEADER_SIZE;
-		if ((lzma_vli)(pos) < lzma_index_total_size(this_index)) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(LZMA_DATA_ERROR));
-			goto error;
-		}
-
-		pos -= lzma_index_total_size(this_index);
-		if (io_pread(pair, &buf, LZMA_STREAM_HEADER_SIZE, pos))
-			goto error;
-
-		ret = lzma_stream_header_decode(&header_flags, buf.u8);
-		if (ret != LZMA_OK) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(ret));
-			goto error;
-		}
-
-		ret = lzma_stream_flags_compare(&header_flags, &footer_flags);
-		if (ret != LZMA_OK) {
-			message_error("%s: %s", pair->src_name,
-					message_strm(ret));
-			goto error;
-		}
-
-		// Store the decoded Stream Flags into this_index. This is
-		// needed so that we can print which Check is used in each
-		// Stream.
-		ret = lzma_index_stream_flags(this_index, &footer_flags);
-		if (ret != LZMA_OK)
-			message_bug();
-
-		// Store also the size of the Stream Padding field. It is
-		// needed to show the offsets of the Streams correctly.
-		ret = lzma_index_stream_padding(this_index, stream_padding);
-		if (ret != LZMA_OK)
-			message_bug();
-
-		if (combined_index != NULL) {
-			// Append the earlier decoded Indexes
-			// after this_index.
-			ret = lzma_index_cat(
-					this_index, combined_index, NULL);
-			if (ret != LZMA_OK) {
-				message_error("%s: %s", pair->src_name,
-						message_strm(ret));
-				goto error;
-			}
-		}
-
-		combined_index = this_index;
-		this_index = NULL;
-
-		xfi->stream_padding += stream_padding;
-
-	} while (pos > 0);
-
-	lzma_end(&strm);
-
-	// All OK. Make combined_index available to the caller.
-	xfi->idx = combined_index;
-	return false;
+	}
 
 error:
-	// Something went wrong, free the allocated memory.
 	lzma_end(&strm);
-	lzma_index_end(combined_index, NULL);
-	lzma_index_end(this_index, NULL);
 	return true;
 }
 
@@ -429,7 +304,21 @@ parse_block_header(file_pair *pair, const lzma_index_iter *iter,
 	switch (lzma_block_compressed_size(&block,
 			iter->block.unpadded_size)) {
 	case LZMA_OK:
-		break;
+		// Validate also block.uncompressed_size if it is present.
+		// If it isn't present, there's no need to set it since
+		// we aren't going to actually decompress the Block; if
+		// we were decompressing, then we should set it so that
+		// the Block decoder could validate the Uncompressed Size
+		// that was stored in the Index.
+		if (block.uncompressed_size == LZMA_VLI_UNKNOWN
+				|| block.uncompressed_size
+					== iter->block.uncompressed_size)
+			break;
+
+		// If the above fails, the file is corrupt so
+		// LZMA_DATA_ERROR is a good error code.
+
+	// Fall through
 
 	case LZMA_DATA_ERROR:
 		// Free the memory allocated by lzma_block_header_decode().
@@ -451,6 +340,21 @@ parse_block_header(file_pair *pair, const lzma_index_iter *iter,
 	bhi->memusage = lzma_raw_decoder_memusage(filters);
 	if (xfi->memusage_max < bhi->memusage)
 		xfi->memusage_max = bhi->memusage;
+
+	// Determine the minimum XZ Utils version that supports this Block.
+	//
+	// Currently the only thing that 5.0.0 doesn't support is empty
+	// LZMA2 Block. This decoder bug was fixed in 5.0.2.
+	{
+		size_t i = 0;
+		while (filters[i + 1].id != LZMA_VLI_UNKNOWN)
+			++i;
+
+		if (filters[i].id == LZMA_FILTER_LZMA2
+				&& iter->block.uncompressed_size == 0
+				&& xfi->min_version < 50000022U)
+			xfi->min_version = 50000022U;
+	}
 
 	// Convert the filter chain to human readable form.
 	message_filters_to_str(bhi->filter_chain, filters, false);
@@ -568,7 +472,11 @@ static void
 get_check_names(char buf[CHECKS_STR_SIZE],
 		uint32_t checks, bool space_after_comma)
 {
-	assert(checks != 0);
+	// If we get called when there are no Checks to print, set checks
+	// to 1 so that we print "None". This can happen in the robot mode
+	// when printing the totals line if there are no valid input files.
+	if (checks == 0)
+		checks = 1;
 
 	char *pos = buf;
 	size_t left = CHECKS_STR_SIZE;
@@ -830,6 +738,8 @@ print_info_adv(xz_file_info *xfi, file_pair *pair)
 				round_up_to_mib(xfi->memusage_max), 0));
 		printf(_("  Sizes in headers:   %s\n"),
 				xfi->all_have_sizes ? _("Yes") : _("No"));
+		printf(_("  Minimum XZ Utils version: %s\n"),
+				xz_ver_to_str(xfi->min_version));
 	}
 
 	return false;
@@ -912,9 +822,10 @@ print_info_robot(xz_file_info *xfi, file_pair *pair)
 	}
 
 	if (message_verbosity_get() >= V_DEBUG)
-		printf("summary\t%" PRIu64 "\t%s\n",
+		printf("summary\t%" PRIu64 "\t%s\t%" PRIu32 "\n",
 				xfi->memusage_max,
-				xfi->all_have_sizes ? "yes" : "no");
+				xfi->all_have_sizes ? "yes" : "no",
+				xfi->min_version);
 
 	return false;
 }
@@ -934,6 +845,9 @@ update_totals(const xz_file_info *xfi)
 
 	if (totals.memusage_max < xfi->memusage_max)
 		totals.memusage_max = xfi->memusage_max;
+
+	if (totals.min_version < xfi->min_version)
+		totals.min_version = xfi->min_version;
 
 	totals.all_have_sizes &= xfi->all_have_sizes;
 
@@ -999,6 +913,8 @@ print_totals_adv(void)
 				round_up_to_mib(totals.memusage_max), 0));
 		printf(_("  Sizes in headers:   %s\n"),
 				totals.all_have_sizes ? _("Yes") : _("No"));
+		printf(_("  Minimum XZ Utils version: %s\n"),
+				xz_ver_to_str(totals.min_version));
 	}
 
 	return;
@@ -1024,9 +940,10 @@ print_totals_robot(void)
 			totals.files);
 
 	if (message_verbosity_get() >= V_DEBUG)
-		printf("\t%" PRIu64 "\t%s",
+		printf("\t%" PRIu64 "\t%s\t%" PRIu32,
 				totals.memusage_max,
-				totals.all_have_sizes ? "yes" : "no");
+				totals.all_have_sizes ? "yes" : "no",
+				totals.min_version);
 
 	putchar('\n');
 
